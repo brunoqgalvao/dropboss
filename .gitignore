@@ -1,0 +1,14 @@
+# syncthing (estado local da máquina, não do projeto)
+.stfolder/
+.stversions/
+.stignore
+*.sync-conflict-*
+
+node_modules/
+.DS_Store
+
+# cópia gerada pelo `dropboss share` (fonte: skill/SKILL.md)
+.claude/
+
+# rascunhos locais
+oi.md
