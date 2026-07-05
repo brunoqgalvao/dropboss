@@ -4,6 +4,7 @@ import { resolve, join, basename, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import os from 'node:os'
 import * as st from './st.js'
+import * as doorman from './doorman.js'
 import { encodeInvite, decodeInvite } from './invite.js'
 
 const { log, warn, die, sleep } = st
@@ -66,23 +67,42 @@ export async function share (args, flags) {
 
   const code = encodeInvite({ deviceID: me, folderID: folder.id, label })
   console.log(`
-┌─ convite dropboss ─────────────────────────────────────────
+┌─ convite dropboss ──────────────────────────────────────────────
+│  copia e manda essa mensagem pro teu parceiro — ele só precisa
+│  colar no agente dele (Claude, Cursor, o que for):
 │
-│  ${code}
+│    entra na minha pasta dropboss. roda:
+│    npx -y github:brunoqgalvao/dropboss join ${code}
+│    (precisa só de node — syncthing e o resto se instalam sozinhos.
+│     o que é isso: https://github.com/brunoqgalvao/dropboss)
 │
-│  manda esse código pro teu parceiro. ele só precisa falar
-│  pro agente dele:  "entra no dropboss: <código>"
-│  (o agente roda:
-│   npx github:brunoqgalvao/dropboss join <código>)
-│
-└────────────────────────────────────────────────────────────`)
+└─────────────────────────────────────────────────────────────────`)
 
-  if (flags['no-wait']) {
+  if (process.env.DROPBOSS_SYNCTHING_HOME || flags['no-wait']) {
     log('quando alguém entrar, rode `dropboss accept` para aceitar')
     return
   }
-  log('esperando alguém entrar… (Ctrl-C para sair; dá pra aceitar depois com `dropboss accept`)')
-  await acceptLoop(folder.id, { forever: true })
+  const ttl = Number(flags.ttl || 7)
+  if (doorman.openInvite(folder.id, label, ttl)) {
+    log(`convite aberto por ${ttl} dias — quem tiver o código entra sozinho, sem você fazer nada`)
+    log('fechar antes: dropboss close  |  quem já entrou continua mesmo depois de fechar')
+  } else {
+    warn('não consegui instalar o porteiro nesta plataforma — deixe `dropboss share --wait` rodando ou rode `dropboss accept` quando avisarem')
+  }
+  if (flags.wait) {
+    log('modo --wait: também aceitando aqui no terminal… (Ctrl-C para sair)')
+    await acceptLoop(folder.id, { forever: true })
+  }
+}
+
+// ---------- close ----------
+export async function close (args) {
+  const path = resolve(args[0] || '.')
+  await st.ensureDaemon()
+  const folder = await st.findFolderByPath(path)
+  if (!folder) die(`${path} não é uma pasta sincronizada`)
+  doorman.closeInvite(folder.id)
+  log(`convite de '${folder.label}' fechado — ninguém mais entra com o código antigo (quem já está, continua)`)
 }
 
 // ---------- accept ----------
@@ -142,7 +162,7 @@ export async function join_ (args, flags) {
   }
   if (flags['no-wait']) return
 
-  log('conectando no outro lado… (ele precisa estar com `dropboss share` ou `dropboss accept` rodando)')
+  log('conectando no outro lado… (o porteiro do host aceita sozinho — leva até ~1 min)')
   const deadline = Date.now() + Number(flags.timeout || 300) * 1000
   let connected = false
   while (Date.now() < deadline) {
@@ -164,9 +184,9 @@ export async function join_ (args, flags) {
     await sleep(3000)
   }
   if (connected) {
-    log('conectado, mas a pasta ainda parece vazia — se ela tem arquivos no host, confere se ele te aceitou (`dropboss accept` lá)')
+    log('conectado, mas a pasta ainda parece vazia — se ela tem arquivos no host, confere se o convite dele ainda está aberto (`dropboss share` lá renova)')
   } else {
-    die('não conectou — confere se o host está online e rodou `dropboss share`/`accept` (a descoberta global pode levar ~1 min)')
+    die('não conectou — confere se o host está online (a descoberta global pode levar ~1 min); rodar de novo é seguro')
   }
 }
 
@@ -177,9 +197,12 @@ export async function status () {
   const [folders, devices, conns] = await Promise.all([st.getFolders(), st.getDevices(), st.connections()])
   const names = Object.fromEntries(devices.map(d => [d.deviceID, d.name || d.deviceID.slice(0, 7)]))
   if (!folders.length) { log('nenhuma pasta sincronizada'); return }
+  const open = doorman.openInvites()
   for (const f of folders) {
     const path = st.expandPath(f.path)
-    console.log(`\n\x1b[1m${f.label}\x1b[0m  ${path}`)
+    const inv = open[f.id] && open[f.id].until > Date.now()
+      ? `  \x1b[33m(convite aberto até ${new Date(open[f.id].until).toISOString().slice(0, 10)})\x1b[0m` : ''
+    console.log(`\n\x1b[1m${f.label}\x1b[0m  ${path}${inv}`)
     for (const d of f.devices.filter(d => d.deviceID !== me)) {
       const on = conns[d.deviceID]?.connected
       let pct = ''
@@ -218,6 +241,7 @@ export async function leave (args) {
   const me = await st.myId()
   const folder = await st.findFolderByPath(path)
   if (!folder) die(`${path} não é uma pasta sincronizada`)
+  doorman.closeInvite(folder.id)
   await st.rest('DELETE', `/rest/config/folders/${encodeURIComponent(folder.id)}`)
   log(`'${folder.label}' fora do sync — os arquivos continuam intactos em ${st.expandPath(folder.path)}`)
 

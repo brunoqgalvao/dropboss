@@ -28,13 +28,13 @@ Install once with `npm install -g github:brunoqgalvao/dropboss` (or run ad-hoc v
 
 | command | what it does |
 |---|---|
-| `dropboss status` | peers, online/offline, sync %, pending conflict files |
-| `dropboss share [path]` | print this folder's invite code again and wait for/accept new peers |
-| `dropboss accept [path]` | accept a peer that already redeemed an invite |
+| `dropboss status` | peers, online/offline, sync %, conflict files, open invites |
+| `dropboss share [path]` | (re)print the invite and open it for 7 days (`--ttl N`) — a background "porteiro" auto-accepts joiners, no terminal needed |
+| `dropboss close [path]` | stop accepting new peers (existing peers stay) |
 | `dropboss join <code>` | join someone else's folder on this machine |
 | `dropboss history [name]` / `dropboss restore <file>` | list / restore old versions |
 | `dropboss leave [path]` | unhook this machine from sync — files stay on disk |
 
 ## Inviting someone
 
-Run `dropboss share`, send them the `db1-…` code over any channel, and have them tell their agent: **"join dropboss: `<code>`"** (the agent runs `npx github:brunoqgalvao/dropboss join <code>`). Keep `share`/`accept` running until they're in. Anyone holding the code can join while you're accepting — share it only with people you want inside.
+Run `dropboss share` and forward the printed message to them — it already contains the full command their agent needs (`npx -y github:brunoqgalvao/dropboss join <code>`; npx handles the install, Syncthing auto-installs). They just paste it to their agent. Your side accepts them automatically for 7 days. **Anyone holding the code can join while the invite is open** — share it only with people you want inside, and `dropboss close` when everyone's in.

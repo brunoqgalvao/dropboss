@@ -23,11 +23,17 @@ npm install -g github:brunoqgalvao/dropboss
 
 ```sh
 # quem compartilha
-dropboss share ~/projeto        # imprime um convite db1-… e fica esperando
+dropboss share ~/projeto   # imprime uma mensagem pronta pra encaminhar e
+                           # deixa o convite aberto por 7 dias (porteiro em
+                           # background aceita quem entrar — sem terminal preso)
 
-# quem entra (recebeu o código por qualquer canal)
-dropboss join db1-…             # pronto. a pasta aparece e sincroniza
+# quem entra (colou a mensagem no agente dele)
+npx -y github:brunoqgalvao/dropboss join db1-…   # pronto. a pasta aparece e sincroniza
 ```
+
+A mensagem do convite já carrega o comando completo com o link do repo — o
+agente do seu parceiro não precisa saber o que é dropboss de antemão; o `npx`
+instala tudo. Feche o convite quando todo mundo entrar: `dropboss close`.
 
 O convite é serverless: o código `db1-…` carrega tudo (device + pasta). Mais gente
 pode entrar com o mesmo código — o Syncthing faz mesh de N peers naturalmente.
@@ -36,10 +42,10 @@ pode entrar com o mesmo código — o Syncthing faz mesh de N peers naturalmente
 
 | comando | faz o quê |
 |---|---|
-| `dropboss share [pasta]` | compartilha e imprime o convite; espera/aceita quem entrar |
+| `dropboss share [pasta]` | compartilha, imprime o convite e abre por 7 dias (`--ttl N`) |
 | `dropboss join <código> [--path p]` | entra numa pasta compartilhada |
-| `dropboss accept [pasta]` | aceita um peer depois (se o share não estiver rodando) |
-| `dropboss status` | peers, sync %, arquivos de conflito |
+| `dropboss close [pasta]` | fecha o convite (quem já entrou, fica) |
+| `dropboss status` | peers, sync %, conflitos, convites abertos |
 | `dropboss history [nome]` | versões antigas (30 dias, `.stversions`) |
 | `dropboss restore <arquivo>` | restaura uma versão antiga |
 | `dropboss leave [pasta]` | desengancha esta máquina — arquivos ficam intactos |

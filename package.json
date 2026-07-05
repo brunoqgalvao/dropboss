@@ -1,6 +1,6 @@
 {
   "name": "dropboss",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "pasta compartilhada p2p pra vibecoding a dois — syncthing por baixo, agents por cima",
   "type": "module",
   "bin": { "dropboss": "bin/dropboss.js" },
