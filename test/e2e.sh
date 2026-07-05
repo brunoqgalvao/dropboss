@@ -77,8 +77,23 @@ ID_B=$(api "$HB" $GUI_B GET /rest/system/status | python3 -c 'import json,sys;pr
 say "apontando endereços localhost (sem discovery no teste)…"
 api "$HB" $GUI_B PATCH "/rest/config/devices/$ID_A" "{\"addresses\":[\"tcp://127.0.0.1:$PORT_A\"]}" >/dev/null
 
-say "accept na máquina A…"
-DROPBOSS_SYNCTHING_HOME="$HA" $DBOSS accept "$FA" --timeout 60 | sed 's/^/    /'
+say "porteiro na máquina A (auto-accept, convite single-use)…"
+KEY_A=$(grep -o '<apikey>[^<]*' "$HA/config.xml" | cut -d'>' -f2)
+FID=$(python3 -c "
+import base64, json
+c = '$CODE'.split('db1-', 1)[1]
+print(json.loads(base64.urlsafe_b64decode(c + '=' * (-len(c) % 4)))['f'])")
+cat > "$TMP/porteiro.json" <<EOF
+{"gui":{"base":"http://127.0.0.1:$GUI_A","key":"$KEY_A"},"open":{"$FID":{"label":"proj-a","until":9999999999999,"uses":1}}}
+EOF
+consumed() { python3 -c "import json;d=json.load(open('$TMP/porteiro.json'));exit(0 if not d['open'] else 1)"; }
+for i in 1 2 3 4 5; do
+  DROPBOSS_PORTEIRO_STATE="$TMP/porteiro.json" node "$ROOT/src/porteiro.mjs" | sed 's/^/    /'
+  consumed && break
+  sleep 8
+done
+consumed || fail "porteiro não consumiu o convite single-use"
+say "porteiro aceitou 1 peer e fechou a porta sozinho ✓"
 
 say "esperando A→B sincronizar…"
 for i in $(seq 1 60); do [ -f "$FB/hello.txt" ] && break; sleep 1; done

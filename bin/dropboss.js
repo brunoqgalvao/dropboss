@@ -6,7 +6,9 @@ const HELP = `
 dropboss 🕶  — pasta compartilhada p2p pra vibecoding a dois
 
 uso:
-  dropboss share [pasta]            compartilha e deixa o convite aberto (7 dias)
+  dropboss share [pasta]            compartilha; convite auto-aceita 1 pessoa em até 7 dias
+                                    (--uses N pra mais gente, --uses 0 ilimitado,
+                                     --ttl <dias>, --manual desliga o auto-aceite)
   dropboss join <código> [--path p] entra numa pasta compartilhada
   dropboss close [pasta]            fecha o convite (quem já entrou, fica)
   dropboss status                   peers, sync, conflitos e convites abertos
@@ -15,7 +17,7 @@ uso:
   dropboss leave [pasta]            desengancha esta máquina (arquivos ficam)
   dropboss accept [pasta]           aceita manualmente (fallback sem porteiro)
 
-flags: --path <dir>  --ttl <dias>  --wait  --no-wait  --timeout <s>  --force
+flags: --path <dir>  --uses <n>  --ttl <dias>  --manual  --wait  --timeout <s>  --force
 
 convites são serverless: o código db1-… carrega tudo. sem conta, sem nuvem.
 .git nunca sincroniza — cada máquina pode ter seu próprio repo local.
@@ -27,7 +29,7 @@ const flags = {}
 for (let i = 0; i < rest.length; i++) {
   if (rest[i].startsWith('--')) {
     const name = rest[i].slice(2)
-    if (['path', 'timeout', 'to', 'ttl'].includes(name)) flags[name] = rest[++i]
+    if (['path', 'timeout', 'to', 'ttl', 'uses'].includes(name)) flags[name] = rest[++i]
     else flags[name] = true
   } else args.push(rest[i])
 }

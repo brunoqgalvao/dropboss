@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import os from 'node:os'
 
-const STATE = join(os.homedir(), '.dropboss', 'porteiro.json')
+const STATE = process.env.DROPBOSS_PORTEIRO_STATE || join(os.homedir(), '.dropboss', 'porteiro.json')
 const stamp = () => new Date().toISOString()
 
 let state
@@ -15,8 +15,10 @@ let dirty = false
 for (const [id, o] of Object.entries(state.open || {})) {
   if (o.until && o.until < now) { delete state.open[id]; dirty = true; console.log(stamp(), `convite de '${o.label || id}' expirou`) }
 }
-if (dirty) writeFileSync(STATE, JSON.stringify(state, null, 2))
-if (!state.gui || !Object.keys(state.open || {}).length) process.exit(0)
+const hasUses = o => o.uses === undefined || o.uses > 0
+function persist () { if (dirty) { writeFileSync(STATE, JSON.stringify(state, null, 2)); dirty = false } }
+persist()
+if (!state.gui || !Object.values(state.open || {}).some(hasUses)) process.exit(0)
 
 async function api (method, path, body) {
   const res = await fetch(state.gui.base + path, {
@@ -45,20 +47,30 @@ async function acceptPendingDevices () {
 async function addToOpenFolders () {
   const pending = await api('GET', '/rest/cluster/pending/folders') || {}
   for (const [folderID, info] of Object.entries(pending)) {
-    if (!state.open[folderID]) continue
+    const inv = state.open[folderID]
+    if (!inv) continue
     const folders = await api('GET', '/rest/config/folders')
     const folder = folders.find(f => f.id === folderID)
     if (!folder) continue
     let changed = false
     for (const deviceID of Object.keys(info.offeredBy || {})) {
-      if (!folder.devices.some(d => d.deviceID === deviceID)) {
-        folder.devices.push({ deviceID })
-        changed = true
-        console.log(stamp(), `peer ${deviceID.slice(0, 7)}… entrou na pasta '${folder.label}'`)
+      if (folder.devices.some(d => d.deviceID === deviceID)) continue // re-entrada não gasta uso
+      if (!hasUses(inv)) break
+      folder.devices.push({ deviceID })
+      changed = true
+      console.log(stamp(), `peer ${deviceID.slice(0, 7)}… entrou na pasta '${folder.label}'`)
+      if (inv.uses !== undefined) {
+        inv.uses--
+        dirty = true
+        if (inv.uses <= 0) {
+          delete state.open[folderID]
+          console.log(stamp(), `convite de '${folder.label}' esgotado — porta fechada`)
+        }
       }
     }
     if (changed) await api('POST', '/rest/config/folders', folder)
   }
+  persist()
 }
 
 try {

@@ -29,7 +29,7 @@ Install once with `npm install -g github:brunoqgalvao/dropboss` (or run ad-hoc v
 | command | what it does |
 |---|---|
 | `dropboss status` | peers, online/offline, sync %, conflict files, open invites |
-| `dropboss share [path]` | (re)print the invite and open it for 7 days (`--ttl N`) — a background "porteiro" auto-accepts joiners, no terminal needed |
+| `dropboss share [path]` | (re)print the invite and open it — by default a background "porteiro" auto-accepts **1 person** within 7 days, then the door closes itself (`--uses N`, `--uses 0` unlimited, `--ttl D`, `--manual` to disable auto-accept) |
 | `dropboss close [path]` | stop accepting new peers (existing peers stay) |
 | `dropboss join <code>` | join someone else's folder on this machine |
 | `dropboss history [name]` / `dropboss restore <file>` | list / restore old versions |
@@ -37,4 +37,4 @@ Install once with `npm install -g github:brunoqgalvao/dropboss` (or run ad-hoc v
 
 ## Inviting someone
 
-Run `dropboss share` and forward the printed message to them — it already contains the full command their agent needs (`npx -y github:brunoqgalvao/dropboss join <code>`; npx handles the install, Syncthing auto-installs). They just paste it to their agent. Your side accepts them automatically for 7 days. **Anyone holding the code can join while the invite is open** — share it only with people you want inside, and `dropboss close` when everyone's in.
+Run `dropboss share` and forward the printed message to them — it already contains the full command their agent needs (`npx -y github:brunoqgalvao/dropboss join <code>`; npx handles the install, Syncthing auto-installs). They just paste it to their agent. Your side accepts automatically — by default exactly **one** person, then the invite self-invalidates (a used or leaked code only produces an unanswered pending request after that). Inviting a group: `--uses N` or `--uses 0`; then close with `dropboss close` when everyone's in.

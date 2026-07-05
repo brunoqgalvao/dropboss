@@ -78,19 +78,25 @@ export async function share (args, flags) {
 │
 └─────────────────────────────────────────────────────────────────`)
 
-  if (process.env.DROPBOSS_SYNCTHING_HOME || flags['no-wait']) {
-    log('quando alguém entrar, rode `dropboss accept` para aceitar')
-    return
-  }
-  const ttl = Number(flags.ttl || 7)
-  if (doorman.openInvite(folder.id, label, ttl)) {
-    log(`convite aberto por ${ttl} dias — quem tiver o código entra sozinho, sem você fazer nada`)
-    log('fechar antes: dropboss close  |  quem já entrou continua mesmo depois de fechar')
+  const manual = flags.manual || flags['no-wait'] || process.env.DROPBOSS_SYNCTHING_HOME
+  if (manual) {
+    // garante que um porteiro antigo não aceite por você (fora de ambiente de teste)
+    if (!process.env.DROPBOSS_SYNCTHING_HOME) doorman.closeInvite(folder.id)
+    log('modo manual: aceite quem entrar com `dropboss accept` (ou deixe `dropboss share --wait` rodando)')
   } else {
-    warn('não consegui instalar o porteiro nesta plataforma — deixe `dropboss share --wait` rodando ou rode `dropboss accept` quando avisarem')
+    const ttl = Number(flags.ttl || 7)
+    const uses = flags.uses === undefined ? 1 : Number(flags.uses) === 0 ? undefined : Number(flags.uses)
+    if (doorman.openInvite(folder.id, label, { ttlDays: ttl, uses })) {
+      log(uses === undefined
+        ? `convite aberto por ${ttl} dias, entradas ilimitadas — quem tiver o código entra sozinho`
+        : `convite vale pra ${uses} pessoa(s) e expira em ${ttl} dias — a porta fecha sozinha depois disso`)
+      log('fechar antes: dropboss close  |  quem já entrou continua mesmo depois de fechar')
+    } else {
+      warn('não consegui instalar o porteiro nesta plataforma — deixe `dropboss share --wait` rodando ou rode `dropboss accept` quando avisarem')
+    }
   }
   if (flags.wait) {
-    log('modo --wait: também aceitando aqui no terminal… (Ctrl-C para sair)')
+    log('modo --wait: aceitando aqui no terminal… (Ctrl-C para sair)')
     await acceptLoop(folder.id, { forever: true })
   }
 }
@@ -200,8 +206,9 @@ export async function status () {
   const open = doorman.openInvites()
   for (const f of folders) {
     const path = st.expandPath(f.path)
-    const inv = open[f.id] && open[f.id].until > Date.now()
-      ? `  \x1b[33m(convite aberto até ${new Date(open[f.id].until).toISOString().slice(0, 10)})\x1b[0m` : ''
+    const o = open[f.id]
+    const inv = o && o.until > Date.now()
+      ? `  \x1b[33m(convite aberto: ${o.uses === undefined ? 'entradas ilimitadas' : `${o.uses} uso(s) restante(s)`}, até ${new Date(o.until).toISOString().slice(0, 10)})\x1b[0m` : ''
     console.log(`\n\x1b[1m${f.label}\x1b[0m  ${path}${inv}`)
     for (const d of f.devices.filter(d => d.deviceID !== me)) {
       const on = conns[d.deviceID]?.connected

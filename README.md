@@ -23,9 +23,11 @@ npm install -g github:brunoqgalvao/dropboss
 
 ```sh
 # quem compartilha
-dropboss share ~/projeto   # imprime uma mensagem pronta pra encaminhar e
-                           # deixa o convite aberto por 7 dias (porteiro em
-                           # background aceita quem entrar — sem terminal preso)
+dropboss share ~/projeto   # imprime uma mensagem pronta pra encaminhar.
+                           # por padrão o convite vale pra 1 pessoa (7 dias):
+                           # um porteiro em background aceita e fecha a porta.
+                           # --uses 3 (três pessoas) · --uses 0 (ilimitado)
+                           # --manual (nada de auto-aceite; use dropboss accept)
 
 # quem entra (colou a mensagem no agente dele)
 npx -y github:brunoqgalvao/dropboss join db1-…   # pronto. a pasta aparece e sincroniza
@@ -42,7 +44,7 @@ pode entrar com o mesmo código — o Syncthing faz mesh de N peers naturalmente
 
 | comando | faz o quê |
 |---|---|
-| `dropboss share [pasta]` | compartilha, imprime o convite e abre por 7 dias (`--ttl N`) |
+| `dropboss share [pasta]` | compartilha e abre o convite: 1 uso por padrão (`--uses N/0`, `--ttl D`, `--manual`) |
 | `dropboss join <código> [--path p]` | entra numa pasta compartilhada |
 | `dropboss close [pasta]` | fecha o convite (quem já entrou, fica) |
 | `dropboss status` | peers, sync %, conflitos, convites abertos |

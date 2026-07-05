@@ -21,10 +21,11 @@ function saveState (s) {
   chmodSync(STATE, 0o600) // contém a apikey do syncthing
 }
 
-export function openInvite (folderId, label, ttlDays = 7) {
+export function openInvite (folderId, label, { ttlDays = 7, uses = 1 } = {}) {
   const s = loadState()
   s.gui = st.gui()
-  s.open[folderId] = { label, until: Date.now() + ttlDays * 864e5 }
+  // uses undefined = ilimitado dentro do prazo
+  s.open[folderId] = { label, until: Date.now() + ttlDays * 864e5, ...(uses === undefined ? {} : { uses }) }
   saveState(s)
   copyFileSync(join(dirname(fileURLToPath(import.meta.url)), 'porteiro.mjs'), SCRIPT)
   return installAgent()
